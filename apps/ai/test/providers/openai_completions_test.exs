@@ -84,6 +84,95 @@ defmodule Ai.Providers.OpenAICompletionsTest do
     assert {:ok, _result} = EventStream.result(stream, 1000)
   end
 
+  test "resolves github_copilot token from local oauth file when api key and env are missing" do
+    test_pid = self()
+
+    tmp =
+      Path.join(
+        System.tmp_dir!(),
+        "openai_completions_copilot_#{System.unique_integer([:positive])}"
+      )
+
+    copilot_dir = Path.join(tmp, "copilot")
+
+    prev_copilot_dir = System.get_env("GITHUB_COPILOT_CONFIG_DIR")
+    prev_copilot_key = System.get_env("GITHUB_COPILOT_API_KEY")
+    prev_gh_token = System.get_env("GH_TOKEN")
+    prev_github_token = System.get_env("GITHUB_TOKEN")
+    prev_lemon_credentials_dir = System.get_env("LEMON_CREDENTIALS_DIR")
+
+    File.mkdir_p!(copilot_dir)
+
+    File.write!(
+      Path.join(copilot_dir, "apps.json"),
+      Jason.encode!(%{
+        "github.com:Iv1.test" => %{
+          "oauth_token" => "copilot-oauth-token",
+          "user" => "tester"
+        }
+      })
+    )
+
+    System.put_env("GITHUB_COPILOT_CONFIG_DIR", copilot_dir)
+    System.put_env("LEMON_CREDENTIALS_DIR", Path.join(tmp, "credentials"))
+    System.delete_env("GITHUB_COPILOT_API_KEY")
+    System.delete_env("GH_TOKEN")
+    System.delete_env("GITHUB_TOKEN")
+
+    on_exit(fn ->
+      if is_binary(prev_copilot_dir) do
+        System.put_env("GITHUB_COPILOT_CONFIG_DIR", prev_copilot_dir)
+      else
+        System.delete_env("GITHUB_COPILOT_CONFIG_DIR")
+      end
+
+      if is_binary(prev_copilot_key) do
+        System.put_env("GITHUB_COPILOT_API_KEY", prev_copilot_key)
+      else
+        System.delete_env("GITHUB_COPILOT_API_KEY")
+      end
+
+      if is_binary(prev_lemon_credentials_dir) do
+        System.put_env("LEMON_CREDENTIALS_DIR", prev_lemon_credentials_dir)
+      else
+        System.delete_env("LEMON_CREDENTIALS_DIR")
+      end
+
+      if is_binary(prev_gh_token),
+        do: System.put_env("GH_TOKEN", prev_gh_token),
+        else: System.delete_env("GH_TOKEN")
+
+      if is_binary(prev_github_token) do
+        System.put_env("GITHUB_TOKEN", prev_github_token)
+      else
+        System.delete_env("GITHUB_TOKEN")
+      end
+
+      File.rm_rf(tmp)
+    end)
+
+    Req.Test.stub(__MODULE__, fn conn ->
+      send(test_pid, {:request_headers, conn.req_headers})
+      Plug.Conn.send_resp(conn, 200, sse_body([:done]))
+    end)
+
+    model = %Model{
+      id: "gpt-4.1",
+      name: "GPT-4.1",
+      api: :openai_completions,
+      provider: :github_copilot,
+      base_url: "https://api.individual.githubcopilot.com"
+    }
+
+    context = Context.new(messages: [%UserMessage{content: "Hi"}])
+
+    {:ok, stream} = OpenAICompletions.stream(model, context, %StreamOptions{})
+
+    assert_receive {:request_headers, headers}, 1000
+    assert Map.new(headers)["authorization"] == "Bearer copilot-oauth-token"
+    assert {:ok, _result} = EventStream.result(stream, 1000)
+  end
+
   test "merges headers with opts overriding model headers" do
     test_pid = self()
 

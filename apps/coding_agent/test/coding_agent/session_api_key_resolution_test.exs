@@ -12,12 +12,18 @@ defmodule CodingAgent.SessionApiKeyResolutionTest do
     System.put_env("LEMON_SECRETS_MASTER_KEY", master_key)
     System.delete_env("OPENAI_API_KEY")
     System.delete_env("OPENCODE_API_KEY")
+    System.delete_env("GITHUB_COPILOT_API_KEY")
+    System.delete_env("GH_TOKEN")
+    System.delete_env("GITHUB_TOKEN")
 
     on_exit(fn ->
       clear_secrets_table()
       System.delete_env("LEMON_SECRETS_MASTER_KEY")
       System.delete_env("OPENAI_API_KEY")
       System.delete_env("OPENCODE_API_KEY")
+      System.delete_env("GITHUB_COPILOT_API_KEY")
+      System.delete_env("GH_TOKEN")
+      System.delete_env("GITHUB_TOKEN")
     end)
 
     :ok
@@ -97,6 +103,25 @@ defmodule CodingAgent.SessionApiKeyResolutionTest do
     assert :ok = Session.prompt(session, "hello")
 
     assert_receive {:stream_api_key, "from-default-secret"}, 1_000
+    GenServer.stop(session)
+  end
+
+  test "github_copilot env key overrides plain and secret-backed provider keys" do
+    assert {:ok, _} = Secrets.set("llm_github_copilot_api_key", "from-secret")
+    System.put_env("GITHUB_COPILOT_API_KEY", "from-env")
+
+    settings =
+      settings(%{
+        "github_copilot" => %{
+          api_key: "from-plain",
+          api_key_secret: "llm_github_copilot_api_key"
+        }
+      })
+
+    session = start_session(self(), settings, mock_model(:github_copilot))
+    assert :ok = Session.prompt(session, "hello")
+
+    assert_receive {:stream_api_key, "from-env"}, 1_000
     GenServer.stop(session)
   end
 

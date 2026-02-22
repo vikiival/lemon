@@ -72,6 +72,22 @@ defmodule Ai.Providers.AnthropicStreamingTest do
     }
   end
 
+  defp copilot_anthropic_model(base_url \\ "https://api.individual.githubcopilot.com") do
+    %Model{
+      id: "claude-sonnet-4.5",
+      name: "Claude Sonnet 4.5",
+      api: :anthropic_messages,
+      provider: :github_copilot,
+      base_url: base_url,
+      reasoning: true,
+      input: [:text, :image],
+      cost: %ModelCost{input: 0.0, output: 0.0, cache_read: 0.0, cache_write: 0.0},
+      context_window: 128_000,
+      max_tokens: 32_000,
+      headers: %{}
+    }
+  end
+
   test "usage cost uses model pricing" do
     body =
       sse_event("message_start", %{
@@ -265,6 +281,60 @@ defmodule Ai.Providers.AnthropicStreamingTest do
 
     assert_receive {:opencode_req_headers, headers}, 1_000
     assert {"x-api-key", "opencode-fallback-key"} in headers
+  end
+
+  test "github_copilot model resolves oauth token from local file" do
+    body =
+      sse_event("message_start", %{"message" => %{"usage" => %{}}}) <>
+        sse_event("message_delta", %{"delta" => %{"stop_reason" => "end_turn"}, "usage" => %{}}) <>
+        sse_event("message_stop", %{})
+
+    test_pid = self()
+    tmp = Path.join(System.tmp_dir!(), "anthropic_copilot_#{System.unique_integer([:positive])}")
+    copilot_dir = Path.join(tmp, "copilot")
+    File.mkdir_p!(copilot_dir)
+    prev_lemon_credentials_dir = System.get_env("LEMON_CREDENTIALS_DIR")
+
+    File.write!(
+      Path.join(copilot_dir, "apps.json"),
+      Jason.encode!(%{
+        "github.com:Iv1.test" => %{
+          "oauth_token" => "copilot-oauth-token",
+          "user" => "tester"
+        }
+      })
+    )
+
+    Req.Test.stub(__MODULE__, fn conn ->
+      send(test_pid, {:copilot_req_headers, conn.req_headers})
+      Plug.Conn.send_resp(conn, 200, body)
+    end)
+
+    with_env(
+      %{
+        "GITHUB_COPILOT_CONFIG_DIR" => copilot_dir,
+        "LEMON_CREDENTIALS_DIR" => Path.join(tmp, "credentials"),
+        "GITHUB_COPILOT_API_KEY" => nil,
+        "GH_TOKEN" => nil,
+        "GITHUB_TOKEN" => nil
+      },
+      fn ->
+        context = Context.new(messages: [%UserMessage{content: "Hi"}])
+        {:ok, stream} = Anthropic.stream(copilot_anthropic_model(), context, %StreamOptions{})
+        assert {:ok, _result} = EventStream.result(stream, 1_000)
+      end
+    )
+
+    assert_receive {:copilot_req_headers, headers}, 1_000
+    assert {"x-api-key", "copilot-oauth-token"} in headers
+
+    if is_binary(prev_lemon_credentials_dir) do
+      System.put_env("LEMON_CREDENTIALS_DIR", prev_lemon_credentials_dir)
+    else
+      System.delete_env("LEMON_CREDENTIALS_DIR")
+    end
+
+    File.rm_rf(tmp)
   end
 
   test "kimi request limits oversized message history before sending" do

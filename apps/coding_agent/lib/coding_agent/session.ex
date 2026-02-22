@@ -1839,6 +1839,13 @@ defmodule CodingAgent.Session do
   defp provider_env_vars("anthropic"), do: ["ANTHROPIC_API_KEY"]
   defp provider_env_vars("openai"), do: ["OPENAI_API_KEY"]
   defp provider_env_vars("openai-codex"), do: ["OPENAI_CODEX_API_KEY", "CHATGPT_TOKEN"]
+
+  defp provider_env_vars("github_copilot"),
+    do: ["GITHUB_COPILOT_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"]
+
+  defp provider_env_vars("github-copilot"),
+    do: ["GITHUB_COPILOT_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"]
+
   defp provider_env_vars("opencode"), do: ["OPENCODE_API_KEY"]
   defp provider_env_vars("kimi"), do: ["KIMI_API_KEY"]
 

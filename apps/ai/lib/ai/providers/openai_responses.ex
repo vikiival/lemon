@@ -180,14 +180,30 @@ defmodule Ai.Providers.OpenAIResponses do
   end
 
   defp get_provider_env_key(provider) do
-    env_var =
-      case provider do
-        :opencode -> "OPENCODE_API_KEY"
-        "opencode" -> "OPENCODE_API_KEY"
+    case provider do
+      :opencode ->
+        System.get_env("OPENCODE_API_KEY")
+
+      "opencode" ->
+        System.get_env("OPENCODE_API_KEY")
+
+      provider
+      when provider in [:github_copilot, :"github-copilot", "github_copilot", "github-copilot"] ->
+        env_first(["GITHUB_COPILOT_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"]) ||
+          Ai.Auth.GitHubCopilotOAuth.resolve_access_token()
+
+      _ ->
+        nil
+    end
+  end
+
+  defp env_first(vars) when is_list(vars) do
+    Enum.find_value(vars, fn var ->
+      case System.get_env(var) do
+        value when is_binary(value) and value != "" -> value
         _ -> nil
       end
-
-    if env_var, do: System.get_env(env_var), else: nil
+    end)
   end
 
   defp missing_api_key_error(:opencode),

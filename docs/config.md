@@ -16,6 +16,11 @@ api_key = "sk-ant-..."
 [providers.openai]
 api_key = "sk-..."
 
+[providers.github_copilot]
+# Optional explicit token. If omitted, Lemon can discover local OAuth credentials.
+api_key = "ghu_..."
+base_url = "https://api.individual.githubcopilot.com"
+
 [providers.opencode]
 api_key = "opencode-..."
 base_url = "https://opencode.ai/zen/v1"
@@ -139,6 +144,7 @@ Environment variables override file values. Common overrides:
 - `LEMON_DEFAULT_PROVIDER`, `LEMON_DEFAULT_MODEL`
 - `LEMON_THEME`, `LEMON_DEBUG`
 - `<PROVIDER>_API_KEY`, `<PROVIDER>_BASE_URL` (e.g., `ANTHROPIC_API_KEY`, `OPENAI_BASE_URL`, `OPENCODE_API_KEY`)
+- `GITHUB_COPILOT_API_KEY` (fallbacks: `GH_TOKEN`, `GITHUB_TOKEN`)
 - `LEMON_CODEX_EXTRA_ARGS`, `LEMON_CODEX_AUTO_APPROVE`
 - `LEMON_CLAUDE_YOLO`
 - `LEMON_WASM_ENABLED`, `LEMON_WASM_RUNTIME_PATH`, `LEMON_WASM_TOOL_PATHS`, `LEMON_WASM_AUTO_BUILD`
@@ -175,6 +181,31 @@ Lemon will automatically read your access token from `$CODEX_HOME/auth.json` (de
 To force a token explicitly, set:
 - `OPENAI_CODEX_API_KEY` (preferred)
 - `CHATGPT_TOKEN` (fallback)
+
+## GitHub Copilot OAuth
+
+Lemon supports GitHub Copilot models via provider `github_copilot`.
+Authentication is non-interactive in Lemon: it reuses local credentials if present.
+
+Credential resolution order:
+
+1. `GITHUB_COPILOT_API_KEY` env var
+2. `GH_TOKEN` env var
+3. `GITHUB_TOKEN` env var
+4. `~/.lemon/credentials/github-copilot.json`
+5. `~/.config/github-copilot/apps.json`
+6. `~/.config/gh/hosts.yml`
+
+Example:
+
+```toml
+[agent]
+default_provider = "github_copilot"
+default_model = "gpt-5"
+
+[providers.github_copilot]
+base_url = "https://api.individual.githubcopilot.com"
+```
 
 ## Web Tools (`websearch` / `webfetch`)
 

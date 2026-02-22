@@ -228,6 +228,9 @@ defmodule Ai.Providers.Anthropic do
       api_key = get_env_api_key() ->
         api_key
 
+      api_key = get_copilot_oauth_api_key(model.provider) ->
+        api_key
+
       true ->
         ""
     end
@@ -243,7 +246,27 @@ defmodule Ai.Providers.Anthropic do
   defp provider_env_vars("kimi"), do: ["KIMI_API_KEY", "MOONSHOT_API_KEY", "ANTHROPIC_API_KEY"]
   defp provider_env_vars(:opencode), do: ["OPENCODE_API_KEY", "ANTHROPIC_API_KEY"]
   defp provider_env_vars("opencode"), do: ["OPENCODE_API_KEY", "ANTHROPIC_API_KEY"]
+
+  defp provider_env_vars(:github_copilot),
+    do: ["GITHUB_COPILOT_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"]
+
+  defp provider_env_vars(:"github-copilot"),
+    do: ["GITHUB_COPILOT_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"]
+
+  defp provider_env_vars("github_copilot"),
+    do: ["GITHUB_COPILOT_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"]
+
+  defp provider_env_vars("github-copilot"),
+    do: ["GITHUB_COPILOT_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"]
+
   defp provider_env_vars(_), do: ["ANTHROPIC_API_KEY"]
+
+  defp get_copilot_oauth_api_key(provider)
+       when provider in [:github_copilot, :"github-copilot", "github_copilot", "github-copilot"] do
+    Ai.Auth.GitHubCopilotOAuth.resolve_access_token()
+  end
+
+  defp get_copilot_oauth_api_key(_provider), do: nil
 
   defp env_value(name) when is_binary(name) do
     case System.get_env(name) do

@@ -22,6 +22,7 @@ defmodule LemonCore.Config.Providers do
   - `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`
   - `OPENAI_API_KEY`, `OPENAI_BASE_URL`
   - `OPENAI_CODEX_API_KEY`
+  - `GITHUB_COPILOT_API_KEY` (fallback: `GH_TOKEN`, `GITHUB_TOKEN`)
   - `OPENCODE_API_KEY`, `OPENCODE_BASE_URL`
 
   The `api_key_secret` field allows referencing secrets from the secret store
@@ -49,6 +50,7 @@ defmodule LemonCore.Config.Providers do
     "anthropic" => %{api_key: "ANTHROPIC_API_KEY", base_url: "ANTHROPIC_BASE_URL"},
     "openai" => %{api_key: "OPENAI_API_KEY", base_url: "OPENAI_BASE_URL"},
     "openai-codex" => %{api_key: "OPENAI_CODEX_API_KEY", base_url: "OPENAI_BASE_URL"},
+    "github_copilot" => %{api_key: "GITHUB_COPILOT_API_KEY", base_url: "GITHUB_COPILOT_BASE_URL"},
     "opencode" => %{api_key: "OPENCODE_API_KEY", base_url: "OPENCODE_BASE_URL"}
   }
 
@@ -107,7 +109,16 @@ defmodule LemonCore.Config.Providers do
   defp apply_provider_env_override(providers, name, env_vars) do
     existing = Map.get(providers, name, %{})
 
-    api_key = Helpers.get_env(env_vars[:api_key])
+    api_key =
+      case name do
+        "github_copilot" ->
+          Helpers.get_env("GITHUB_COPILOT_API_KEY") || Helpers.get_env("GH_TOKEN") ||
+            Helpers.get_env("GITHUB_TOKEN")
+
+        _ ->
+          Helpers.get_env(env_vars[:api_key])
+      end
+
     base_url = Helpers.get_env(env_vars[:base_url])
 
     merged =

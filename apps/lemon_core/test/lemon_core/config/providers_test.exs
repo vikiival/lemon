@@ -18,6 +18,10 @@ defmodule LemonCore.Config.ProvidersTest do
         "OPENAI_API_KEY",
         "OPENAI_BASE_URL",
         "OPENAI_CODEX_API_KEY",
+        "GITHUB_COPILOT_API_KEY",
+        "GITHUB_COPILOT_BASE_URL",
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
         "OPENCODE_API_KEY",
         "OPENCODE_BASE_URL"
       ]
@@ -163,6 +167,41 @@ defmodule LemonCore.Config.ProvidersTest do
 
       assert config.providers["openai"][:base_url] == "https://custom.openai.com"
       assert config.providers["openai-codex"][:base_url] == "https://custom.openai.com"
+    end
+
+    test "github_copilot uses GITHUB_COPILOT_API_KEY env var" do
+      System.put_env("GITHUB_COPILOT_API_KEY", "gh-copilot-env")
+
+      settings = %{
+        "providers" => %{
+          "github_copilot" => %{
+            "api_key" => "gh-copilot-config"
+          }
+        }
+      }
+
+      config = Providers.resolve(settings)
+
+      assert config.providers["github_copilot"][:api_key] == "gh-copilot-env"
+    end
+
+    test "github_copilot falls back to GH_TOKEN and GITHUB_TOKEN" do
+      System.put_env("GH_TOKEN", "gh-token")
+
+      settings = %{
+        "providers" => %{
+          "github_copilot" => %{}
+        }
+      }
+
+      config = Providers.resolve(settings)
+      assert config.providers["github_copilot"][:api_key] == "gh-token"
+
+      System.delete_env("GH_TOKEN")
+      System.put_env("GITHUB_TOKEN", "github-token")
+
+      config2 = Providers.resolve(settings)
+      assert config2.providers["github_copilot"][:api_key] == "github-token"
     end
 
     test "handles unknown providers" do

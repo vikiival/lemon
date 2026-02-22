@@ -1488,6 +1488,11 @@ api_key = "sk-ant-..."
 [providers.openai]
 api_key = "sk-..."
 
+[providers.github_copilot]
+# Optional explicit token. If omitted, Lemon can reuse local Copilot OAuth credentials.
+api_key = "ghu_..."
+base_url = "https://api.individual.githubcopilot.com"
+
 [providers.kimi]
 api_key = "sk-kimi-..."
 base_url = "https://api.kimi.com/coding/"
@@ -1960,6 +1965,13 @@ export OPENAI_API_KEY="sk-..."
 export OPENAI_CODEX_API_KEY="..."
 # or
 export CHATGPT_TOKEN="..."
+
+# GitHub Copilot OAuth (env overrides)
+export GITHUB_COPILOT_API_KEY="ghu_..."
+# or fallback envs
+export GH_TOKEN="ghu_..."
+# or
+export GITHUB_TOKEN="ghu_..."
 
 # Kimi
 export KIMI_API_KEY="sk-kimi-..."

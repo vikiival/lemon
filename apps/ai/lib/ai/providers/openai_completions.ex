@@ -165,24 +165,60 @@ defmodule Ai.Providers.OpenAICompletions do
   end
 
   defp get_provider_env_key(provider) do
-    env_var =
-      case provider do
-        :groq -> "GROQ_API_KEY"
-        :mistral -> "MISTRAL_API_KEY"
-        :xai -> "XAI_API_KEY"
-        :cerebras -> "CEREBRAS_API_KEY"
-        :openrouter -> "OPENROUTER_API_KEY"
-        :opencode -> "OPENCODE_API_KEY"
-        "groq" -> "GROQ_API_KEY"
-        "mistral" -> "MISTRAL_API_KEY"
-        "xai" -> "XAI_API_KEY"
-        "cerebras" -> "CEREBRAS_API_KEY"
-        "openrouter" -> "OPENROUTER_API_KEY"
-        "opencode" -> "OPENCODE_API_KEY"
+    case provider do
+      :groq ->
+        System.get_env("GROQ_API_KEY")
+
+      :mistral ->
+        System.get_env("MISTRAL_API_KEY")
+
+      :xai ->
+        System.get_env("XAI_API_KEY")
+
+      :cerebras ->
+        System.get_env("CEREBRAS_API_KEY")
+
+      :openrouter ->
+        System.get_env("OPENROUTER_API_KEY")
+
+      :opencode ->
+        System.get_env("OPENCODE_API_KEY")
+
+      "groq" ->
+        System.get_env("GROQ_API_KEY")
+
+      "mistral" ->
+        System.get_env("MISTRAL_API_KEY")
+
+      "xai" ->
+        System.get_env("XAI_API_KEY")
+
+      "cerebras" ->
+        System.get_env("CEREBRAS_API_KEY")
+
+      "openrouter" ->
+        System.get_env("OPENROUTER_API_KEY")
+
+      "opencode" ->
+        System.get_env("OPENCODE_API_KEY")
+
+      provider
+      when provider in [:github_copilot, :"github-copilot", "github_copilot", "github-copilot"] ->
+        env_first(["GITHUB_COPILOT_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"]) ||
+          Ai.Auth.GitHubCopilotOAuth.resolve_access_token()
+
+      _ ->
+        nil
+    end
+  end
+
+  defp env_first(vars) when is_list(vars) do
+    Enum.find_value(vars, fn var ->
+      case System.get_env(var) do
+        value when is_binary(value) and value != "" -> value
         _ -> nil
       end
-
-    if env_var, do: System.get_env(env_var), else: nil
+    end)
   end
 
   defp build_url(model) do
